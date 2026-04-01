@@ -143,20 +143,32 @@ function withdrawUI(){
 }
 
 function checkAcc(){
-  const amt = document.getElementById("amt");
-  const acc = document.getElementById("acc");
-  const bank = document.getElementById("bank");
-  const accountName = document.getElementById("accountName");
-
+  const accInput =
+    document.getElementById("acc");
+  const bankInput =
+    document.getElementById("bank");
+  const accountNumber = accInput.value;
+  const bankcode = bankInput.value;
+  if(!accountNumber || !bankCode){
+    alert("Fill account number and bank");
+    return;
+  }
   fetch("https://coin-msh4.onrender.com/verify-account",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({account_number:acc.value,bank_code:bank.value})
-  }).then(res=>res.json())
-  .then(d=>{
-    accountName.innerText = d.account_name || "Invalid account";
+    body:JSON.stringify({account_number:accountNumber,bank_code: bankCode })
+  })
+  .then(res=> res.json())
+  .then(d => {
+    console log(d);
+    nameCheck.innerText = d.account_name || "Not found";
+  })
+  .catch(err => {
+    console.log(err);
+    alert("Error verifying account");
   });
 }
+      
 
 function withdraw(){
   const amt = document.getElementById("amt");
