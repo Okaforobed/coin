@@ -3,6 +3,7 @@ const cors = require("cors");
 const admin = require("firebase-admin");
 const axios = require("axios");
 const serviceAccount = require("./serviceAccountKey.json");
+const PORT = process.env.PORT || 3000;
 
 admin.initializeApp({
 credential: admin.credential.cert(serviceAccount)
@@ -102,8 +103,10 @@ gold[goldName].qty+=qty;
 await ref.update({balance,gold});
 res.json({success:true});
 });
-const PORT = ProcessingInstruction.env.PORT || 3000;
-app.listen(3000,()=>console.log("Server running on port 3000"));
+
+app.listen( PORT,() => {
+    console.log("Server running on port"+PORT)
+});
 
 
 
