@@ -160,7 +160,7 @@ function checkAcc(){
   })
   .then(res=> res.json())
   .then(d => {
-    console log(d);
+    console.log(d);
     nameCheck.innerText = d.account_name || "Not found";
   })
   .catch(err => {
