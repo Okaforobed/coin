@@ -115,7 +115,7 @@ function deposit(){
     amount: amt*100,
     currency:"NGN",
     callback:function(){
-      fetch("http://localhost:3000/deposit",{
+      fetch("https://coin-msh4.onrender.com/deposit",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({uid:userId,amount:amt})
@@ -148,7 +148,7 @@ function checkAcc(){
   const bank = document.getElementById("bank");
   const accountName = document.getElementById("accountName");
 
-  fetch("http://localhost:3000/verify-account",{
+  fetch("https://coin-msh4.onrender.com/verify-account",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({account_number:acc.value,bank_code:bank.value})
@@ -163,7 +163,7 @@ function withdraw(){
   const acc = document.getElementById("acc");
   const bank = document.getElementById("bank");
 
-  fetch("http://localhost:3000/withdraw",{
+  fetch("https://coin-msh4.onrender.com/withdraw",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({
@@ -191,7 +191,7 @@ function transferUI(){
 function transfer(){
   const amt = document.getElementById("amt");
   const rAcc = document.getElementById("rAcc");
-  fetch("http://localhost:3000/transfer",{
+  fetch("https://coin-msh4.onrender.com/transfer",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({senderUid:userId,receiverAcc:rAcc.value,amount:amt.value})
@@ -213,7 +213,7 @@ function vaultUI(){
 function saveVault(){
   const amt = document.getElementById("amt");
   const date = document.getElementById("date");
-  fetch("http://localhost:3000/vault-save",{
+  fetch("https://coin-msh4.onrender.com/vault-save",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({uid:userId,amount:amt.value,releaseDate:date.value})
@@ -251,7 +251,7 @@ function goldUI(){
 }
 
 function buyGold(name){
-  fetch("http://localhost:3000/gold-action",{
+  fetch("https://coin-msh4.onrender.com/gold-action",{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({uid:userId,action:"buy",goldName:name,price:prices[name],qty:1})
