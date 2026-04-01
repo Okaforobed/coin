@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CoinNest PRO</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+</head>
+<body class="bg-black text-white p-4">
+
+<!-- AUTH -->
+<div id="auth">
+<h1 class="text-3xl text-green-400 mb-4">CoinNest</h1>
+<input id="name" placeholder="Full Name" class="p-2 bg-gray-800 mb-2 w-full"><br>
+<input id="email" placeholder="Email" class="p-2 bg-gray-800 mb-2 w-full"><br>
+<input id="password" type="password" placeholder="Password" class="p-2 bg-gray-800 mb-2 w-full"><br>
+<button onclick="register()" class="bg-green-500 p-2 w-full mb-2 rounded">Register</button>
+<button onclick="login()" class="bg-blue-500 p-2 w-full mb-2 rounded">Login</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash" style="display:none">
+<h2 id="welcome" class="text-xl mb-2"></h2>
+<h1 id="balance" class="text-3xl mb-4">₦0</h1>
+<div class="grid grid-cols-2 gap-2 mt-4">
+<button onclick="deposit()" class="bg-purple-500 p-2 rounded">Deposit</button>
+<button onclick="withdrawUI()" class="bg-red-500 p-2 rounded">Withdraw</button>
+<button onclick="transferUI()" class="bg-blue-500 p-2 rounded">Transfer</button>
+<button onclick="vaultUI()" class="bg-yellow-500 p-2 rounded">Vault</button>
+</div>
+<div id="content" class="mt-4"></div>
+</div>
+
+<script>
+// FIREBASE CONFIG (YOUR PROJECT DETAILS)
+const firebaseConfig = {
+  apiKey:"AIzaSyCzztRh4TcskdiyV2MxCuerSXau61i9QpQ",
+  authDomain:"coinnest-db354.firebaseapp.com",
+  projectId:"coinnest-db354"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// DOM ELEMENTS
+const authSection = document.getElementById("auth");
+const dash = document.getElementById("dash");
+const welcome = document.getElementById("welcome");
+const balance = document.getElementById("balance");
+const content = document.getElementById("content");
+
+// INPUTS
+const nameInput = document.getElementById("name");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+
+let userId="";
+
+// REGISTER
+function register(){
+  auth.createUserWithEmailAndPassword(emailInput.value,passwordInput.value)
+  .then(res=>{
+    db.collection("users").doc(res.user.uid).set({
+      name:nameInput.value,
+      balance:1000,
+      vault:[],
+      gold:{},
+      accountNumber: Math.floor(1000000000+Math.random()*9000000000).toString()
+    });
+    alert("Registered successfully!");
+  }).catch(err=>{
+    if(err.code === "auth/email-already-in-use"){
+      alert("This email is already registered. Try login.");
+    } else {
+      alert(err.message);
+    }
+  });
+}
+
+// LOGIN
+function login(){
+  auth.signInWithEmailAndPassword(emailInput.value,passwordInput.value)
+  .then(()=>{
+    auth.onAuthStateChanged(u=>{
+      userId=u.uid;
+      authSection.style.display="none";
+      dash.style.display="block";
+      loadUser();
+    });
+  }).catch(err=>alert(err.message));
+}
+
+// LOAD USER
+function loadUser(){
+  db.collection("users").doc(userId).get().then(doc=>{
+    const d=doc.data();
+    welcome.innerText = "Hi "+d.name;
+    balance.innerText = "₦"+(d.balance||0);
+    loadVault();
+    loadGold();
+  });
+}
+
+// DEPOSIT
+function deposit(){
+  let amt = prompt("Enter deposit amount");
+  if(!amt || amt <=0) return alert("Invalid amount");
+  PaystackPop.setup({
+    key:"pk_live_5231927c523086ddf309381e96fe6e2496aca762", // Replace with your Paystack public key
+    email: auth.currentUser.email,
+    amount: amt*100,
+    currency:"NGN",
+    callback:function(){
+      fetch("http://localhost:3000/deposit",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({uid:userId,amount:amt})
+      }).then(()=>loadUser());
+    }
+  }).openIframe();
+}
+
+// WITHDRAW
+function withdrawUI(){
+  content.innerHTML=`
+<input id="amt" placeholder="Amount" class="p-2 w-full mb-2 bg-gray-800"><br>
+<input id="acc" placeholder="Account Number" class="p-2 w-full mb-2 bg-gray-800"><br>
+<select id="bank" class="p-2 w-full mb-2 bg-gray-800">
+<option value="044">Access</option>
+<option value="058">GTB</option>
+<option value="033">UBA</option>
+<option value="011">First Bank</option>
+<option value="057">Zenith</option>
+</select>
+<p id="accountName" class="text-green-400 mb-2"></p>
+<button onclick="checkAcc()" class="bg-gray-700 p-2 w-full mb-2 rounded">Verify Account</button>
+<button onclick="withdraw()" class="bg-red-600 p-2 w-full rounded">Send Money</button>
+`;
+}
+
+function checkAcc(){
+  const amt = document.getElementById("amt");
+  const acc = document.getElementById("acc");
+  const bank = document.getElementById("bank");
+  const accountName = document.getElementById("accountName");
+
+  fetch("http://localhost:3000/verify-account",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({account_number:acc.value,bank_code:bank.value})
+  }).then(res=>res.json())
+  .then(d=>{
+    accountName.innerText = d.account_name || "Invalid account";
+  });
+}
+
+function withdraw(){
+  const amt = document.getElementById("amt");
+  const acc = document.getElementById("acc");
+  const bank = document.getElementById("bank");
+
+  fetch("http://localhost:3000/withdraw",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      uid:userId,
+      amount:amt.value,
+      account_number:acc.value,
+      bank_code:bank.value
+    })
+  }).then(res=>res.json())
+  .then(d=>{
+    alert(d.success ? "Withdrawal successful" : d.error);
+    loadUser();
+  });
+}
+
+// TRANSFER
+function transferUI(){
+  content.innerHTML=`
+<input id="rAcc" placeholder="Receiver Account Number" class="p-2 w-full mb-2 bg-gray-800"><br>
+<input id="amt" placeholder="Amount" class="p-2 w-full mb-2 bg-gray-800"><br>
+<button onclick="transfer()" class="bg-blue-600 p-2 w-full rounded">Send</button>
+`;
+}
+
+function transfer(){
+  const amt = document.getElementById("amt");
+  const rAcc = document.getElementById("rAcc");
+  fetch("http://localhost:3000/transfer",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({senderUid:userId,receiverAcc:rAcc.value,amount:amt.value})
+  }).then(res=>res.json())
+  .then(d=>{ alert(d.success?"Transfer successful":d.error); loadUser(); });
+}
+
+// VAULT
+function vaultUI(){
+  content.innerHTML=`
+<input id="amt" placeholder="Amount" class="p-2 w-full mb-2 bg-gray-800"><br>
+<input id="date" type="date" class="p-2 w-full mb-2 bg-gray-800"><br>
+<button onclick="saveVault()" class="bg-yellow-600 p-2 w-full rounded mb-2">Save to Vault</button>
+<div id="vaultList" class="mt-2"></div>
+`;
+  loadVault();
+}
+
+function saveVault(){
+  const amt = document.getElementById("amt");
+  const date = document.getElementById("date");
+  fetch("http://localhost:3000/vault-save",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({uid:userId,amount:amt.value,releaseDate:date.value})
+  }).then(()=>loadUser());
+}
+
+function loadVault(){
+  db.collection("users").doc(userId).get().then(doc=>{
+    const v=doc.data().vault||[];
+    let html="";
+    v.forEach(x=>{
+      const days=Math.ceil((new Date(x.release)-new Date())/86400000);
+      if(days<=0){
+        db.collection("users").doc(userId).update({
+          balance: (doc.data().balance||0) + Number(x.amount)
+        });
+      } else {
+        html+=`<div>₦${x.amount} - ${days} days left</div>`;
+      }
+    });
+    const vaultListEl = document.getElementById("vaultList");
+    if(vaultListEl) vaultListEl.innerHTML=html;
+  });
+}
+
+// GOLD
+const prices={"Basic":5000,"Pro":10000};
+function goldUI(){
+  let html="";
+  Object.keys(prices).forEach(n=>{
+    html+=`<button onclick="buyGold('${n}')" class="bg-green-700 p-2 w-full mb-2 rounded">${n} ₦${prices[n]}</button>`;
+  });
+  content.innerHTML=html+`<div id='portfolio'></div>`;
+  loadGold();
+}
+
+function buyGold(name){
+  fetch("http://localhost:3000/gold-action",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({uid:userId,action:"buy",goldName:name,price:prices[name],qty:1})
+  }).then(()=>loadUser());
+}
+
+function loadGold(){
+  db.collection("users").doc(userId).get().then(doc=>{
+    const g=doc.data().gold||{};
+    let html="";
+    for(let k in g){
+      html+=`<div>${k} x${g[k].qty}</div>`;
+    }
+    const portfolioEl = document.getElementById("portfolio");
+    if(portfolioEl) portfolioEl.innerHTML=html;
+  });
+}
+</script>
+</body>
+</html>
