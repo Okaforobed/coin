@@ -19,13 +19,18 @@ const PAYSTACK_SECRET = "sk_live_e1432fea2db8da3fb2d419a57041587bf1716164"; // r
 // VERIFY ACCOUNT
 app.post("/verify-account", async (req,res)=>{
 const {account_number, bank_code}=req.body;
+    if (!account_number || !bank_code } {return
+res.status(400).json({ error: "Missing fields"});
 try{
 const response = await axios.get(`https://api.paystack.co/bank/resolve?account_number=${account_number}&bank_code=${bank_code}`,{
 headers:{Authorization:`Bearer ${PAYSTACK_SECRET}`}
 });
 res.json(response.data.data);
-}catch{res.status(400).json({error:"Invalid account"});}
-});
+} catch (err) {
+console.log(err.response?.data || err.message);
+    res.status(400).json({ error:"Invalid account details"});
+}
+                                        });
 
 // DEPOSIT
 app.post("/deposit", async(req,res)=>{
